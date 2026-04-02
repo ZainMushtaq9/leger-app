@@ -34,7 +34,7 @@ flutter build web --release `
 This repo includes a root [vercel.json](/c:/Users/Kashif/Documents/New%20folder%20(3)/vercel.json) that:
 
 - installs Flutter in the Vercel build
-- builds the app with `flutter build web --release` plus `FIREBASE_*` dart defines
+- runs [vercel-build.sh](/c:/Users/Kashif/Documents/New%20folder%20(3)/vercel-build.sh) so the Firebase dart defines stay out of the short Vercel command field
 - serves the `build/web` output
 - rewrites all routes to `index.html` for SPA-style navigation
 
