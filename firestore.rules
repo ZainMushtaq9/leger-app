@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function sameAccount(accountId) {
+      return isSignedIn() && accountId is string && accountId == request.auth.uid;
+    }
+
+    match /hisabRakhoCloudBackups/{workspaceId} {
+      allow read, delete: if sameAccount(resource.data.accountId);
+      allow create: if sameAccount(request.resource.data.accountId);
+      allow update: if sameAccount(resource.data.accountId) &&
+        sameAccount(request.resource.data.accountId);
+
+      match /backups/{backupId} {
+        allow read, delete: if sameAccount(resource.data.accountId);
+        allow create: if sameAccount(request.resource.data.accountId);
+        allow update: if sameAccount(resource.data.accountId) &&
+          sameAccount(request.resource.data.accountId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
