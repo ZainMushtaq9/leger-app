@@ -6,8 +6,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'controller.dart';
 import 'models.dart';
 import 'theme.dart';
+import 'ui/auth_gate_screen.dart';
 import 'ui/lock_screen.dart';
 import 'ui/customer_portal_viewer_screen.dart';
+import 'ui/email_verification_screen.dart';
 import 'ui/root_shell.dart';
 import 'ui/splash_screen.dart';
 import 'ui/welcome_screen.dart';
@@ -151,12 +153,21 @@ class _LaunchGateState extends State<LaunchGate> with WidgetsBindingObserver {
           );
         }
 
-        if (widget.controller.needsOnboarding) {
-          return WelcomeScreen(controller: widget.controller);
-        }
-
         if (widget.controller.isLocked) {
           return LockScreen(controller: widget.controller);
+        }
+
+        if (widget.controller.requiresStartupAuthentication &&
+            !widget.controller.isCloudAccountSignedIn) {
+          return AuthGateScreen(controller: widget.controller);
+        }
+
+        if (widget.controller.needsCloudEmailVerification) {
+          return EmailVerificationScreen(controller: widget.controller);
+        }
+
+        if (widget.controller.needsOnboarding) {
+          return WelcomeScreen(controller: widget.controller);
         }
 
         return RootShell(

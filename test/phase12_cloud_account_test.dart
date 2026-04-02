@@ -41,6 +41,51 @@ class FakeCloudAuthService implements CloudAuthService {
   }
 
   @override
+  Future<CloudAccountProfile> signInWithEmailOrPhone({
+    required String identifier,
+    required String password,
+  }) async {
+    _current = CloudAccountProfile(
+      id: 'password-user-1',
+      email: identifier.contains('@') ? identifier : 'phone@example.com',
+      phoneNumber: identifier.contains('@') ? '' : identifier,
+      displayName: 'Email User',
+      provider: 'password',
+      isEmailVerified: true,
+      signedInAt: DateTime(2026, 4, 2, 8),
+    );
+    return _current!;
+  }
+
+  @override
+  Future<CloudAccountProfile> registerWithEmail({
+    required String displayName,
+    required String email,
+    required String password,
+    String phoneNumber = '',
+  }) async {
+    _current = CloudAccountProfile(
+      id: 'password-user-2',
+      email: email,
+      phoneNumber: phoneNumber,
+      displayName: displayName,
+      provider: 'password',
+      isEmailVerified: false,
+      signedInAt: DateTime(2026, 4, 2, 9),
+    );
+    return _current!;
+  }
+
+  @override
+  Future<void> sendPasswordReset({required String identifier}) async {}
+
+  @override
+  Future<void> sendEmailVerification() async {}
+
+  @override
+  Future<CloudAccountProfile?> reloadCurrentAccount() async => _current;
+
+  @override
   Future<void> signOut() async {
     _current = null;
   }

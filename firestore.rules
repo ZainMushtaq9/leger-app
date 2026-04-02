@@ -9,6 +9,20 @@ service cloud.firestore {
       return isSignedIn() && accountId is string && accountId == request.auth.uid;
     }
 
+    match /hisabRakhoAccounts/{userId} {
+      allow read, create, update, delete: if isSignedIn() &&
+        request.auth.uid == userId;
+    }
+
+    match /hisabRakhoPhoneLogins/{phoneHash} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isSignedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn() &&
+        resource.data.uid == request.auth.uid;
+    }
+
     match /hisabRakhoCloudBackups/{workspaceId} {
       allow read, delete: if sameAccount(resource.data.accountId);
       allow create: if sameAccount(request.resource.data.accountId);

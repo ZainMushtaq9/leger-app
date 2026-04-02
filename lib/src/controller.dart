@@ -469,6 +469,18 @@ class HisabRakhoController extends ChangeNotifier {
   DateTime? get lastCloudSyncAt => _settings.lastCloudSyncAt;
   DateTime? get lastCloudRestoreAt => _settings.lastCloudRestoreAt;
   String get cloudSyncLastError => _settings.cloudSyncLastError.trim();
+  bool get requiresStartupAuthentication => hasCloudSignIn;
+  bool get needsCloudEmailVerification {
+    final account = cloudAccount;
+    if (account == null) {
+      return false;
+    }
+    if (account.provider == 'google.com') {
+      return false;
+    }
+    return account.email.trim().isNotEmpty && !account.isEmailVerified;
+  }
+
   CloudAccountProfile? get cloudAccount {
     if (_cloudAccount != null) {
       return _cloudAccount;
@@ -480,8 +492,10 @@ class HisabRakhoController extends ChangeNotifier {
     return CloudAccountProfile(
       id: _settings.cloudAccountId,
       email: _settings.cloudAccountEmail,
+      phoneNumber: _settings.cloudAccountPhone,
       displayName: _settings.cloudAccountDisplayName,
       provider: _settings.cloudAccountProvider,
+      isEmailVerified: _settings.cloudAccountEmailVerified,
       signedInAt: _settings.lastCloudAccountSignInAt ?? DateTime.now(),
     );
   }
@@ -753,8 +767,10 @@ class HisabRakhoController extends ChangeNotifier {
     _settings = _settings.copyWith(
       cloudAccountId: account?.id.trim() ?? '',
       cloudAccountEmail: account?.email.trim() ?? '',
+      cloudAccountPhone: account?.phoneNumber.trim() ?? '',
       cloudAccountDisplayName: account?.displayName.trim() ?? '',
       cloudAccountProvider: account?.provider.trim() ?? '',
+      cloudAccountEmailVerified: account?.isEmailVerified ?? false,
       lastCloudAccountSignInAt: account?.signedInAt,
       clearCloudAccount: account == null,
     );
@@ -5686,6 +5702,81 @@ class HisabRakhoController extends ChangeNotifier {
     final account = await service.signInWithGoogle();
     await _applyCloudAccount(account, notify: false);
     if (_cloudSyncReady) {
+      try {
+        final backupService = await _requireCloudBackupService();
+        _accountCloudWorkspaces = await backupService.listAccountWorkspaces(
+          accountId: account.id,
+          limit: 12,
+        );
+      } catch (_) {
+        _accountCloudWorkspaces = <CloudWorkspaceDirectoryEntry>[];
+      }
+    }
+    notifyListeners();
+    return account;
+  }
+
+  Future<CloudAccountProfile> signInToCloudAccountWithCredentials({
+    required String identifier,
+    required String password,
+  }) async {
+    final service = await _requireCloudAuthService();
+    final account = await service.signInWithEmailOrPhone(
+      identifier: identifier,
+      password: password,
+    );
+    await _applyCloudAccount(account, notify: false);
+    if (_cloudSyncReady) {
+      try {
+        final backupService = await _requireCloudBackupService();
+        _accountCloudWorkspaces = await backupService.listAccountWorkspaces(
+          accountId: account.id,
+          limit: 12,
+        );
+      } catch (_) {
+        _accountCloudWorkspaces = <CloudWorkspaceDirectoryEntry>[];
+      }
+    }
+    notifyListeners();
+    return account;
+  }
+
+  Future<CloudAccountProfile> registerCloudAccount({
+    required String displayName,
+    required String email,
+    required String password,
+    String phoneNumber = '',
+  }) async {
+    final service = await _requireCloudAuthService();
+    final account = await service.registerWithEmail(
+      displayName: displayName,
+      email: email,
+      password: password,
+      phoneNumber: phoneNumber,
+    );
+    await _applyCloudAccount(account, notify: false);
+    _accountCloudWorkspaces = <CloudWorkspaceDirectoryEntry>[];
+    notifyListeners();
+    return account;
+  }
+
+  Future<void> sendCloudPasswordReset({required String identifier}) async {
+    final service = await _requireCloudAuthService();
+    await service.sendPasswordReset(identifier: identifier);
+  }
+
+  Future<void> sendCloudEmailVerification() async {
+    final service = await _requireCloudAuthService();
+    await service.sendEmailVerification();
+  }
+
+  Future<CloudAccountProfile?> refreshCloudAccountProfile() async {
+    final service = await _requireCloudAuthService();
+    final account = await service.reloadCurrentAccount();
+    await _applyCloudAccount(account, notify: false);
+    if (account == null) {
+      _accountCloudWorkspaces = <CloudWorkspaceDirectoryEntry>[];
+    } else if (_cloudSyncReady) {
       try {
         final backupService = await _requireCloudBackupService();
         _accountCloudWorkspaces = await backupService.listAccountWorkspaces(
